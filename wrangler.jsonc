@@ -1,7 +1,9 @@
 {
-  "name": "garmini",
+  "name": "gar-mini",
+  "main": "worker.js",
   "compatibility_date": "2026-10-26",
   "assets": {
-    "directory": "./site"
+    "directory": "./site",
+    "binding": "ASSETS"
   }
 }

@@ -3,7 +3,7 @@
 > Personal Garmin API Marathon Training Command Center & PWA Dashboard.
 > Designed for Sub-3:28 marathon prep, training load monitoring, polarized 80/20 intensity breakdown, and recovery biomarkers.
 
-**Live Deployment:** [https://garmini.nmanjuonline.workers.dev](https://garmini.nmanjuonline.workers.dev)
+**Live Deployment:** [https://gar-mini.nmanjuonline.workers.dev](https://gar-mini.nmanjuonline.workers.dev)
 
 ---
 
