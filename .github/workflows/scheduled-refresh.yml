@@ -33,10 +33,13 @@ jobs:
             garmini-data-${{ runner.os }}-
 
       - name: Create .env.local from Secret
+        if: ${{ secrets.GARMIN_PERSONAL_API_KEY != '' }}
         run: |
           echo "GARMIN_PERSONAL_API_KEY=${{ secrets.GARMIN_PERSONAL_API_KEY }}" > .env.local
 
       - name: Pull Latest Garmin Activities
+        env:
+          GARMIN_PERSONAL_API_KEY: ${{ secrets.GARMIN_PERSONAL_API_KEY }}
         run: |
           python pull.py
 

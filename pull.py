@@ -30,16 +30,27 @@ BASE_API_URL = "https://personal.connectapi.garmin.com"
 TOKEN_URL = f"{BASE_API_URL}/personalapitoken-service/personal-api/personal-api-key/token"
 
 def get_api_key():
-    if not ENV_FILE.exists():
-        raise FileNotFoundError(f".env.local not found at {ENV_FILE}")
-    with open(ENV_FILE, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line.startswith("GARMIN_PERSONAL_API_KEY="):
-                key = line.split("=", 1)[1].strip()
-                if key:
-                    return key
-    raise ValueError("GARMIN_PERSONAL_API_KEY is missing or empty in .env.local")
+    # 1. Check environment variable (CI/CD, GitHub Actions, Docker)
+    env_key = os.environ.get("GARMIN_PERSONAL_API_KEY", "").strip().strip('"').strip("'")
+    if env_key:
+        return env_key
+
+    # 2. Check local .env.local file
+    if ENV_FILE.exists():
+        with open(ENV_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("GARMIN_PERSONAL_API_KEY="):
+                    key = line.split("=", 1)[1].strip().strip('"').strip("'")
+                    if key:
+                        return key
+
+    raise ValueError(
+        "GARMIN_PERSONAL_API_KEY is missing or empty.\n"
+        "- For GitHub Actions: Add GARMIN_PERSONAL_API_KEY to Repository Secrets at:\n"
+        "  https://github.com/nmanjuonline/gar-mini/settings/secrets/actions\n"
+        "- For local runs: Add GARMIN_PERSONAL_API_KEY=<your-key> to .env.local"
+    )
 
 def get_access_token():
     # Check if cached token is still valid (< 20 hours old)
