@@ -1,5 +1,5 @@
-// Garmini Service Worker v4
-const CACHE_NAME = 'garmini-v4';
+// Garmini Service Worker v5
+const CACHE_NAME = 'garmini-v5';
 const ASSETS = [
   '/',
   '/index.html',
@@ -27,7 +27,21 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      fetch(e.request)
+        .then((res) => {
+          if (res && res.status === 200) {
+            const copy = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(e.request, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
   e.respondWith(
-    caches.match(e.request).then((res) => res || fetch(e.request).catch(() => caches.match('/index.html')))
+    caches.match(e.request).then((res) => res || fetch(e.request))
   );
 });

@@ -19,6 +19,7 @@ INDEX_HTML = BASE_DIR / "index.html"
 SITE_DIR = BASE_DIR / "site"
 MANIFEST_FILE = BASE_DIR / "manifest.json"
 SW_FILE = BASE_DIR / "sw.js"
+DATA_CACHE_FILE = BASE_DIR / "data_cache.json"
 
 def load_json(name, default):
     path = DATA_DIR / name
@@ -56,6 +57,15 @@ def clean_te_label(label):
 
 def process_data():
     activities = load_json("activities.json", [])
+    if not activities and DATA_CACHE_FILE.exists():
+        try:
+            with open(DATA_CACHE_FILE, "r", encoding="utf-8") as f:
+                cached = json.load(f)
+                if cached and cached.get("recent_activities"):
+                    print("-> Loaded data from data_cache.json fallback")
+                    return cached
+        except Exception as e:
+            print(f"Warning reading {DATA_CACHE_FILE}: {e}")
     daily_summaries = load_json("daily_summaries.json", [])
     sleep_records = load_json("sleep.json", [])
     hrv_records = load_json("hrv.json", [])
@@ -318,7 +328,7 @@ def process_data():
         }
     }
 
-    return {
+    result = {
         "sync_time": meta.get("last_sync", now.isoformat())[:16].replace("T", " "),
         "mumbai": {
             "name": "Tata Mumbai Marathon",
@@ -361,6 +371,12 @@ def process_data():
         "hr_zones": run_zones,
         "pacing_strategies": pacing_strategies
     }
+    try:
+        with open(DATA_CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(result, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+    return result
 
 def generate_pwa_files():
     manifest = {
@@ -385,8 +401,8 @@ def generate_pwa_files():
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(manifest, f, indent=2)
 
-    sw_code = """// Garmini Service Worker v4
-const CACHE_NAME = 'garmini-v4';
+    sw_code = """// Garmini Service Worker v5
+const CACHE_NAME = 'garmini-v5';
 const ASSETS = [
   '/',
   '/index.html',
@@ -414,8 +430,22 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      fetch(e.request)
+        .then((res) => {
+          if (res && res.status === 200) {
+            const copy = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(e.request, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
   e.respondWith(
-    caches.match(e.request).then((res) => res || fetch(e.request).catch(() => caches.match('/index.html')))
+    caches.match(e.request).then((res) => res || fetch(e.request))
   );
 });
 """
