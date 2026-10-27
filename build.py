@@ -464,6 +464,7 @@ def generate_dashboard_html(data):
   <style>
     /* Dark Theme Tokens (Default: Midnight Athletic) */
     :root, [data-theme="dark"] {{
+      color-scheme: dark;
       --bg: #030712;
       --card-bg: #0b1329;
       --card-bg-subtle: #142244;
@@ -487,12 +488,18 @@ def generate_dashboard_html(data):
       --banner-bg: linear-gradient(90deg, #0284c7 0%, #2563eb 100%);
       --focus-ring: #38bdf8;
 
+      /* Sleek Themed Scrollbars */
+      --scrollbar-track: rgba(11, 19, 41, 0.45);
+      --scrollbar-thumb: rgba(147, 197, 253, 0.24);
+      --scrollbar-thumb-hover: #38bdf8;
+
       --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, "Liberation Mono", Menlo, monospace;
     }}
 
     /* Light Theme Tokens (Athletic Daylight) */
     [data-theme="light"] {{
+      color-scheme: light;
       --bg: #f8fafc;
       --card-bg: #ffffff;
       --card-bg-subtle: #f1f5f9;
@@ -515,6 +522,49 @@ def generate_dashboard_html(data):
       --chart-text: #475569;
       --banner-bg: linear-gradient(90deg, #0284c7 0%, #2563eb 100%);
       --focus-ring: #0284c7;
+
+      /* Sleek Themed Scrollbars */
+      --scrollbar-track: rgba(241, 245, 249, 0.7);
+      --scrollbar-thumb: rgba(100, 116, 139, 0.35);
+      --scrollbar-thumb-hover: #0284c7;
+    }}
+
+    /* Modern Custom Scrollbars (Cross-Platform / Cross-Browser) */
+    * {{
+      scrollbar-width: thin;
+      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    }}
+
+    ::-webkit-scrollbar {{
+      width: 6px;
+      height: 6px;
+    }}
+
+    ::-webkit-scrollbar-track {{
+      background: var(--scrollbar-track);
+      border-radius: 9999px;
+    }}
+
+    ::-webkit-scrollbar-thumb {{
+      background-color: var(--scrollbar-thumb);
+      border-radius: 9999px;
+      border: 1px solid transparent;
+      background-clip: padding-box;
+      transition: background-color 0.2s ease;
+    }}
+
+    ::-webkit-scrollbar-thumb:hover {{
+      background-color: var(--scrollbar-thumb-hover);
+    }}
+
+    ::-webkit-scrollbar-corner {{
+      background: transparent;
+    }}
+
+    ::-webkit-scrollbar-button {{
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
     }}
 
     /* Reset & Prevent Any Horizontal Overflow */
@@ -1123,6 +1173,7 @@ def generate_dashboard_html(data):
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
       margin-top: 10px;
+      padding-bottom: 6px;
     }}
 
     .splits-table {{
@@ -1146,6 +1197,13 @@ def generate_dashboard_html(data):
       padding: 10px;
       border-bottom: 1px solid var(--card-border);
       white-space: nowrap;
+    }}
+
+    .splits-table th:last-child,
+    .splits-table td:last-child {{
+      white-space: normal;
+      min-width: 140px;
+      line-height: 1.35;
     }}
 
     /* Section Layouts */
@@ -1266,6 +1324,8 @@ def generate_dashboard_html(data):
       overflow-y: auto;
       width: 100%;
       max-width: 100%;
+      padding-right: 6px;
+      scrollbar-gutter: stable;
     }}
 
     .long-run-item {{
@@ -1378,6 +1438,7 @@ def generate_dashboard_html(data):
       width: 100%;
       max-width: 100%;
       -webkit-overflow-scrolling: touch;
+      scrollbar-gutter: stable;
     }}
 
     table {{
