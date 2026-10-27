@@ -1,0 +1,24 @@
+{
+  "name": "gar-mini",
+  "version": "1.0.0",
+  "description": "Garmin Personal API Training Dashboard & Marathon Prep",
+  "main": "index.html",
+  "scripts": {
+    "build": "python build.py",
+    "build:dev": "python build.py",
+    "pull": "python pull.py",
+    "refresh": "python pull.py && python build.py",
+    "dev": "node server.js",
+    "start": "node server.js",
+    "deploy": "npx wrangler deploy"
+  },
+  "keywords": [
+    "garmin",
+    "marathon",
+    "dashboard",
+    "training",
+    "pwa"
+  ],
+  "author": "Manju",
+  "license": "MIT"
+}

@@ -1,0 +1,8 @@
+.env.local
+data/
+node_modules/
+.wrangler/
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db

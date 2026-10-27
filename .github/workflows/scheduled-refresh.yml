@@ -1,0 +1,52 @@
+name: Garmini Auto-Refresh & Deploy
+
+on:
+  schedule:
+    # Run daily at 00:30 UTC (06:00 AM IST)
+    - cron: '30 0 * * *'
+  workflow_dispatch: # Allows manual trigger anytime from GitHub Actions tab
+
+jobs:
+  refresh-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache Garmin History Data
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: garmini-data-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            garmini-data-${{ runner.os }}-
+
+      - name: Create .env.local from Secret
+        run: |
+          echo "GARMIN_PERSONAL_API_KEY=${{ secrets.GARMIN_PERSONAL_API_KEY }}" > .env.local
+
+      - name: Pull Latest Garmin Activities
+        run: |
+          python pull.py
+
+      - name: Build Dashboard & Static Assets
+        run: |
+          python build.py
+
+      - name: Deploy to Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
