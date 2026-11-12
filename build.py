@@ -937,6 +937,81 @@ def generate_dashboard_html(data):
       color: var(--text-main);
     }}
 
+    /* Sync Modal (for Live Deployment) */
+    .sync-modal-backdrop {{
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }}
+
+    .sync-modal-box {{
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      max-width: 480px;
+      width: 100%;
+      padding: 22px 24px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      color: var(--text-main);
+    }}
+
+    .sync-modal-header {{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }}
+
+    .sync-modal-header h3 {{
+      font-size: 1.05rem;
+      margin: 0;
+      font-weight: 700;
+      color: var(--text-main);
+    }}
+
+    .sync-modal-close {{
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.4rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0 4px;
+    }}
+
+    .sync-modal-close:hover {{
+      color: var(--text-main);
+    }}
+
+    .sync-modal-body p {{
+      font-size: 0.82rem;
+      color: var(--text-dim);
+      line-height: 1.5;
+      margin: 0 0 10px 0;
+    }}
+
+    .sync-token-input {{
+      flex: 1;
+      background: var(--card-bg-subtle);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+    }}
+
+    .sync-token-input:focus {{
+      outline: none;
+      border-color: var(--accent-primary);
+    }}
+
     .badge-sync {{
       font-family: var(--font-mono);
       font-size: 0.76rem;
@@ -1741,6 +1816,37 @@ def generate_dashboard_html(data):
     <button class="sync-toast-close" onclick="hideSyncToast()" aria-label="Dismiss">&times;</button>
   </div>
 
+  <!-- Sync Modal (for Live Deployment) -->
+  <div id="syncModal" class="sync-modal-backdrop" role="dialog" aria-modal="true" style="display:none;">
+    <div class="sync-modal-box">
+      <div class="sync-modal-header">
+        <h3>Sync Activities (Live Deployment)</h3>
+        <button class="sync-modal-close" onclick="closeSyncModal()" aria-label="Close">&times;</button>
+      </div>
+      <div class="sync-modal-body">
+        <p>Because the live site runs on Cloudflare Workers, pulling new Garmin activities is processed through your GitHub Actions refresh workflow.</p>
+        
+        <div style="margin: 16px 0;">
+          <strong style="font-size:0.85rem;color:var(--text-main);">Option 1: 1-Click Trigger with GitHub Token</strong>
+          <p style="font-size:0.75rem;color:var(--text-muted);margin:4px 0 8px 0;">Save a GitHub Personal Access Token (stored only in this browser's localStorage) to trigger syncs with 1 click anytime:</p>
+          <div style="display:flex;gap:8px;">
+            <input type="password" id="ghTokenInput" placeholder="ghp_xxxxxxxxxxxx" class="sync-token-input" autocomplete="off" />
+            <button class="sync-btn" onclick="saveAndTriggerSync()">Trigger Sync</button>
+          </div>
+          <div style="font-size:0.72rem;margin-top:6px;">
+            <a href="https://github.com/settings/tokens/new?scopes=repo,workflow&description=Garmini+Sync+Trigger" target="_blank" rel="noopener" style="color:var(--accent-primary);">Generate GitHub Token &rarr;</a>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--card-border);padding-top:14px;margin-top:14px;">
+          <strong style="font-size:0.85rem;color:var(--text-main);">Option 2: Run directly in GitHub</strong>
+          <p style="font-size:0.75rem;color:var(--text-muted);margin:4px 0 8px 0;">Or open GitHub Actions and click <em>"Run workflow"</em> manually:</p>
+          <a href="https://github.com/nmanjuonline/gar-mini/actions/workflows/scheduled-refresh.yml" target="_blank" rel="noopener" class="sync-btn" style="text-decoration:none;display:inline-flex;">Open GitHub Actions &rarr;</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <main id="mainContent">
     <!-- Dual Marathon Countdown & Pace Targets -->
     <div class="marathon-hero">
@@ -2050,6 +2156,58 @@ def generate_dashboard_html(data):
       if (toast) toast.classList.remove('is-visible');
     }}
 
+    function openSyncModal() {{
+      const m = document.getElementById('syncModal');
+      if (m) m.style.display = 'flex';
+      const input = document.getElementById('ghTokenInput');
+      if (input) {{
+        input.value = localStorage.getItem('garmini_gh_token') || '';
+        input.focus();
+      }}
+    }}
+
+    function closeSyncModal() {{
+      const m = document.getElementById('syncModal');
+      if (m) m.style.display = 'none';
+    }}
+
+    async function triggerGitHubWorkflow(token) {{
+      try {{
+        const ghRes = await fetch('https://api.github.com/repos/nmanjuonline/gar-mini/actions/workflows/scheduled-refresh.yml/dispatches', {{
+          method: 'POST',
+          headers: {{
+            'Authorization': 'Bearer ' + token.trim(),
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
+          }},
+          body: JSON.stringify({{ ref: 'main' }})
+        }});
+        if (ghRes.ok || ghRes.status === 204) {{
+          showSyncToast('success', 'Workflow triggered! New activities will deploy in ~2 minutes.', 8000);
+          return true;
+        }}
+        const err = await ghRes.json().catch(function() {{ return {{}}; }});
+        showSyncToast('error', 'GitHub error: ' + (err.message || ghRes.statusText || 'Invalid token'), 8000);
+        return false;
+      }} catch (e) {{
+        showSyncToast('error', 'Network error calling GitHub: ' + e.message, 8000);
+        return false;
+      }}
+    }}
+
+    async function saveAndTriggerSync() {{
+      const input = document.getElementById('ghTokenInput');
+      const val = input ? input.value.trim() : '';
+      if (!val) {{
+        alert('Please enter a GitHub Personal Access Token.');
+        return;
+      }}
+      localStorage.setItem('garmini_gh_token', val);
+      closeSyncModal();
+      showSyncToast('info', 'Triggering GitHub Actions workflow...', 0);
+      await triggerGitHubWorkflow(val);
+    }}
+
     async function triggerManualSync() {{
       const btn = document.getElementById('syncBtn');
       const btnText = document.getElementById('syncBtnText');
@@ -2058,7 +2216,7 @@ def generate_dashboard_html(data):
       btn.disabled = true;
       btn.classList.add('is-syncing');
       if (btnText) btnText.textContent = 'Syncing...';
-      showSyncToast('info', 'Connecting to Garmin sync service...', 0);
+      showSyncToast('info', 'Connecting to sync service...', 0);
 
       try {{
         const resp = await fetch('/api/sync', {{
@@ -2074,7 +2232,17 @@ def generate_dashboard_html(data):
         }}
 
         if (res.actionsUrl) {{
-          showSyncToast('info', (res.message || 'Manual sync') + ': <a href="' + res.actionsUrl + '" target="_blank" rel="noopener">Trigger on GitHub Actions &rarr;</a>', 10000);
+          const storedToken = localStorage.getItem('garmini_gh_token');
+          if (storedToken) {{
+            showSyncToast('info', 'Triggering GitHub Actions workflow...', 0);
+            const ok = await triggerGitHubWorkflow(storedToken);
+            if (!ok) {{
+              openSyncModal();
+            }}
+            return;
+          }}
+          hideSyncToast();
+          openSyncModal();
           return;
         }}
 
