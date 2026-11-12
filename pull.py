@@ -353,9 +353,15 @@ def fetch_biometrics_and_zones(token):
 
 def main():
     full_history = "--full" in sys.argv
+    activities_only = "--activities-only" in sys.argv or "--activities" in sys.argv
     print("========================================")
     print(" Garmini - Garmin Personal API Sync")
-    print(f" Mode: {'Full History' if full_history else 'Last 12 Months'}")
+    if activities_only:
+        print(" Mode: Activities Only (Fast Sync)")
+    elif full_history:
+        print(" Mode: Full History")
+    else:
+        print(" Mode: Last 12 Months")
     print("========================================")
 
     now = datetime.now()
@@ -373,20 +379,27 @@ def main():
     # 1. Activities
     activities = fetch_activities(token, cutoff_date=cutoff_date)
 
-    # 2. Daily summaries
-    daily = fetch_daily_summaries(token, start_dt, now)
+    if activities_only:
+        daily = load_json_file("daily_summaries.json", [])
+        sleep = load_json_file("sleep.json", [])
+        hrv = load_json_file("hrv.json", [])
+        weight = load_json_file("weight.json", [])
+        print("   Skipping wellness/sleep/hrv (activities-only mode).", flush=True)
+    else:
+        # 2. Daily summaries
+        daily = fetch_daily_summaries(token, start_dt, now)
 
-    # 3. Sleep
-    sleep = fetch_sleep_summaries(token, start_dt, now)
+        # 3. Sleep
+        sleep = fetch_sleep_summaries(token, start_dt, now)
 
-    # 4. HRV
-    hrv = fetch_hrv_summaries(token, start_dt, now)
+        # 4. HRV
+        hrv = fetch_hrv_summaries(token, start_dt, now)
 
-    # 5. Weight
-    weight = fetch_weight(token, start_dt, now)
+        # 5. Weight
+        weight = fetch_weight(token, start_dt, now)
 
-    # 6. Biometrics & Zones
-    fetch_biometrics_and_zones(token)
+        # 6. Biometrics & Zones
+        fetch_biometrics_and_zones(token)
 
     # Summary
     earliest_date = "N/A"

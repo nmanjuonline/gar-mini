@@ -841,6 +841,102 @@ def generate_dashboard_html(data):
       line-height: 1;
     }}
 
+    /* Manual Sync Button */
+    .sync-btn {{
+      background: var(--card-bg-subtle);
+      border: 1px solid var(--accent-primary);
+      color: var(--accent-primary);
+      padding: 6px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      font-weight: 600;
+      min-height: 34px;
+      transition: all 0.2s ease;
+    }}
+
+    .sync-btn:hover:not(:disabled) {{
+      border-color: var(--accent-primary-hover);
+      background: var(--accent-primary-subtle);
+      transform: translateY(-1px);
+    }}
+
+    .sync-btn:disabled {{
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }}
+
+    .sync-btn.is-syncing .sync-icon {{
+      animation: spinSync 1s linear infinite;
+    }}
+
+    @keyframes spinSync {{
+      100% {{ transform: rotate(360deg); }}
+    }}
+
+    /* Sync Notification Toast */
+    .sync-toast {{
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      background: var(--card-bg);
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 12px 18px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+      font-size: 0.82rem;
+      font-family: var(--font-mono);
+      display: none;
+      align-items: center;
+      gap: 12px;
+      max-width: 420px;
+      animation: fadeIn 0.2s ease-out;
+    }}
+
+    .sync-toast.is-visible {{
+      display: flex;
+    }}
+
+    .sync-toast.toast-success {{
+      border-color: var(--accent-green, #10b981);
+    }}
+
+    .sync-toast.toast-error {{
+      border-color: var(--accent-red, #ef4444);
+    }}
+
+    .sync-toast.toast-info {{
+      border-color: var(--accent-primary);
+    }}
+
+    .sync-toast a {{
+      color: var(--accent-primary);
+      text-decoration: underline;
+      font-weight: 600;
+    }}
+
+    .sync-toast-close {{
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1.1rem;
+      padding: 0 4px;
+      margin-left: auto;
+      line-height: 1;
+    }}
+
+    .sync-toast-close:hover {{
+      color: var(--text-main);
+    }}
+
     .badge-sync {{
       font-family: var(--font-mono);
       font-size: 0.76rem;
@@ -1616,6 +1712,16 @@ def generate_dashboard_html(data):
     </div>
     
     <div class="header-actions">
+      <!-- Manual Sync Button -->
+      <button id="syncBtn" class="sync-btn" onclick="triggerManualSync()" aria-label="Sync activities manually" title="Sync activities manually from Garmin">
+        <svg class="sync-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        <span id="syncBtnText" class="sync-btn-text">Sync</span>
+      </button>
+
       <!-- Dark / Light Theme Toggle -->
       <button id="themeToggleBtn" class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle theme" title="Switch between dark and light theme">
         <span id="themeToggleIcon" class="theme-toggle-icon">☀️</span>
@@ -1624,10 +1730,16 @@ def generate_dashboard_html(data):
 
       <div class="badge-sync" aria-live="polite">
         <span class="pulse-dot" aria-hidden="true"></span>
-        <span>Synced {data["sync_time"]}</span>
+        <span id="syncBadgeText">Synced {data["sync_time"]}</span>
       </div>
     </div>
   </header>
+
+  <!-- Sync Status Toast -->
+  <div id="syncToast" class="sync-toast" role="status" aria-live="polite">
+    <span id="syncToastMsg"></span>
+    <button class="sync-toast-close" onclick="hideSyncToast()" aria-label="Dismiss">&times;</button>
+  </div>
 
   <main id="mainContent">
     <!-- Dual Marathon Countdown & Pace Targets -->
@@ -1917,6 +2029,70 @@ def generate_dashboard_html(data):
 
     function toggleTheme() {{
       applyTheme(currentThemeMode === 'dark' ? 'light' : 'dark');
+    }}
+
+    // Manual Activities Sync
+    let toastTimeout = null;
+    function showSyncToast(type, htmlContent, duration) {{
+      const toast = document.getElementById('syncToast');
+      const msg = document.getElementById('syncToastMsg');
+      if (!toast || !msg) return;
+      toast.className = 'sync-toast is-visible toast-' + type;
+      msg.innerHTML = htmlContent;
+      clearTimeout(toastTimeout);
+      if (duration && duration > 0) {{
+        toastTimeout = setTimeout(hideSyncToast, duration);
+      }}
+    }}
+
+    function hideSyncToast() {{
+      const toast = document.getElementById('syncToast');
+      if (toast) toast.classList.remove('is-visible');
+    }}
+
+    async function triggerManualSync() {{
+      const btn = document.getElementById('syncBtn');
+      const btnText = document.getElementById('syncBtnText');
+      if (!btn || btn.disabled) return;
+
+      btn.disabled = true;
+      btn.classList.add('is-syncing');
+      if (btnText) btnText.textContent = 'Syncing...';
+      showSyncToast('info', 'Connecting to Garmin sync service...', 0);
+
+      try {{
+        const resp = await fetch('/api/sync', {{
+          method: 'POST',
+          headers: {{ 'Content-Type': 'application/json' }}
+        }});
+        const res = await resp.json().catch(function() {{ return {{}}; }});
+
+        if (resp.ok && res.success) {{
+          showSyncToast('success', 'Activities synced successfully! Reloading...', 2000);
+          setTimeout(function() {{ window.location.reload(); }}, 1200);
+          return;
+        }}
+
+        if (res.actionsUrl) {{
+          showSyncToast('info', (res.message || 'Manual sync') + ': <a href="' + res.actionsUrl + '" target="_blank" rel="noopener">Trigger on GitHub Actions &rarr;</a>', 10000);
+          return;
+        }}
+
+        let errMsg = 'Sync failed.';
+        const errText = res.error || res.output;
+        if (errText) {{
+          const lines = errText.split('\\n').map(function(l) {{ return l.trim(); }}).filter(Boolean);
+          const matched = lines.slice().reverse().find(function(l) {{ return l.indexOf('Error:') !== -1 || l.indexOf('Exception:') !== -1; }});
+          errMsg = matched || lines[lines.length - 1] || 'Sync failed.';
+        }}
+        showSyncToast('error', 'Sync failed: ' + errMsg, 8000);
+      }} catch (err) {{
+        showSyncToast('info', 'Sync server unreachable. Run local server with <code>npm run dev</code> or <a href="https://github.com/nmanjuonline/gar-mini/actions/workflows/scheduled-refresh.yml" target="_blank" rel="noopener">trigger via GitHub Actions &rarr;</a>', 10000);
+      }} finally {{
+        btn.disabled = false;
+        btn.classList.remove('is-syncing');
+        if (btnText) btnText.textContent = 'Sync';
+      }}
     }}
 
     // 1. Interactive Pacing Strategy Switcher
