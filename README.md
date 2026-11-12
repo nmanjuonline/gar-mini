@@ -53,16 +53,13 @@ GARMIN_PERSONAL_API_KEY="your-garmin-personal-api-token"
 
 ### 3. Sync & Build
 ```bash
-# Pull latest activities from Garmin Connect API (full sync)
+# Pull latest activities from Garmin Connect API
 python pull.py
-
-# Pull activities only (fast manual sync)
-python pull.py --activities-only
 
 # Build standalone HTML dashboard and PWA site
 npm run build
 
-# Start local preview server with live /api/sync support
+# Start local preview server
 npm run dev
 # Opens at http://localhost:3000
 ```
